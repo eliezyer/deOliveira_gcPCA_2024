@@ -103,11 +103,11 @@ def extract_face_cPCs(A_samples, B_samples, PCA_mdl, best_alphas, image_dimensio
 # starting analysis
 
 # loading data
-# change data_path to the location where you saved the file face_emotions.mat
-data_path = '/mnt/extraSSD4TB/CloudStorage/Dropbox/preprocessing_data/gcPCA_files/face/CFD_V3/Images/CFD'
+# change data_dir to the location where you saved the file face_emotions.mat
+data_dir = '/mnt/extraSSD4TB/CloudStorage/Dropbox/preprocessing_data/gcPCA_files/face/CFD_V3/Images/CFD'
 
 # extract the pre-processed data
-tempmat = loadmat(os.path.join(data_path, 'face_emotions.mat'))
+tempmat = loadmat(os.path.join(data_dir, 'face_emotions.mat'))
 data_A = tempmat['face_emotions']['data_A'][0][0]
 data_B = tempmat['face_emotions']['data_B'][0][0]
 labels = tempmat['face_emotions']['labels'][0][0]

@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from contrastive import CPCA
 from scipy.stats import zscore
 from scipy.signal import savgol_filter
-import mat73  # to load matlab v7.3 files
+from scipy.io import loadmat
 
 # parameters for processing
 min_n_cell = 30  # min number of cells in the brain area to be used
@@ -42,10 +42,11 @@ from contrastive_methods import gcPCA
 
 # other directories
 # directory with the HPC data
-base_dir = '/mnt/probox/buzsakilab.nyumc.org/datasets/GirardeauG/'
+base_dir = '/home/eliezyer/Documents/github/deOliveira_gcPCA_2024/Figure3/'
 
 # directory where to save the figures
 save_fig_dir = '/mnt/extraSSD4TB/CloudStorage/Dropbox/figures_gcPCA/Figure3/source_plots/'
+
 
 # defining ancillar functions
 def extract_trials(temp, temp_spd):
@@ -148,7 +149,9 @@ def trials_projection(proj_df, intervals):
 
     return trials_proj
 
+
 from matplotlib.collections import LineCollection
+
 
 # functions for plotting
 # sets of functions to make the line plot using colormap
@@ -184,25 +187,27 @@ def colorline(x, y, z=None, cmap=plt.get_cmap('copper'), norm=plt.Normalize(0.0,
 
     return lc
 
+
 # defining function to plot cPCA trajectories in each subplot
 def plot_pc_trajectories(ax, x, y, color_edge, color_dot, alpha, pos_data, trial_interval, air_puff_loc, colormap):
     colorline(x, y, ax=ax, linewidth=1, alpha=alpha, cmap=colormap)
     ax.scatter(x[0], y[0], s=mrkr_size, c=color_dot[0], zorder=5, alpha=0.9,
-                      edgecolors='k')
+               edgecolors='k')
     ax.scatter(x[-1], y[-1], s=mrkr_size, c=color_dot[1], zorder=10, alpha=0.9,
-                      edgecolors='k')
+               edgecolors='k')
     # finding location index to plot
     temp_pos = pos_data.restrict(trial_interval)
     I = np.argmin(np.abs(temp_pos - air_puff_loc))
     if I < len(x):  # location of air puff was getting where gcPCA is nan
         ax.scatter(x[I], y[I], s=mrkr_size, c=color_edge[0],
-                          edgecolors=color_edge[1], zorder=15, alpha=0.9)
+                   edgecolors=color_edge[1], zorder=15, alpha=0.9)
     return ax
 
+
 # x and y label adjustments
-def plot_pc_adjustments(ax,xlabel,ylabel):
-    ax.set_xlabel(xlabel,fontsize=20)
-    ax.set_ylabel(ylabel,fontsize=20)
+def plot_pc_adjustments(ax, xlabel, ylabel):
+    ax.set_xlabel(xlabel, fontsize=20)
+    ax.set_ylabel(ylabel, fontsize=20)
     ax.set_yticks([])
     ax.set_xticks([])
     return ax
@@ -219,369 +224,383 @@ custom_gradient = LinearSegmentedColormap.from_list('custom_gradient', (
     (1.000, (0.80, 0, 0.80))))
 
 # %% load the data structure
-data_dict = mat73.loadmat(base_dir + 'hpc_bla_gg_dataset.mat')
+data_dict = loadmat(base_dir + 'hpc_gg_session.mat')
 
-# loop over sessions
-session_list = np.arange(start=35, stop=36)
-for ses in session_list:
-    air_puff_times = data_dict['hpc_bla_gg_dataset']['air_puff_times'][ses]
-    if len(air_puff_times) > 10:  # only run the session if it has 10 air puffs
-        pos = data_dict['hpc_bla_gg_dataset']['location'][ses]  # position
-        linspd = data_dict['hpc_bla_gg_dataset']['linspd'][ses]  # running speed
-        pos_t = data_dict['hpc_bla_gg_dataset']['tracking_t'][ses]  # position time vector
-        spikes = data_dict['hpc_bla_gg_dataset']['spikes_ts'][ses]  # spikes
-        region = data_dict['hpc_bla_gg_dataset']['spikes_region'][ses]  # brain region
+air_puff_times = data_dict['hpc_gg_session']['air_puff_times'][0][0]  # air puff times
+if len(air_puff_times) > 10:  # only run the analysis if it has at least 10 air puffs events
+    pos = data_dict['hpc_gg_session']['location'][0][0]  # position
+    linspd = data_dict['hpc_gg_session']['linspd'][0][0]  # running speed
+    pos_t = data_dict['hpc_gg_session']['tracking_t'][0][0]  # position time vector
+    spikes = data_dict['hpc_gg_session']['spikes_ts'][0][0]  # spikes
+    region = data_dict['hpc_gg_session']['spikes_region'][0]  # brain region
+    # passion regions to numpy
+    region = np.array([a[0] for a in region[0][0]])
 
-        if np.char.equal(region, 'hpc').sum() > min_n_cell:
+    if np.char.equal(region, 'hpc').sum() > min_n_cell:
 
-            # getting time intervals of the session
-            run_temp = data_dict['hpc_bla_gg_dataset']['task'][ses]['run_intervals']
-            pre_sws_temp = data_dict['hpc_bla_gg_dataset']['task'][ses]['pre_sws_intervals']
-            post_sws_temp = data_dict['hpc_bla_gg_dataset']['task'][ses]['post_sws_intervals']
+        # getting time intervals of the session
+        run_temp = data_dict['hpc_gg_session']['task'][0][0]['run_intervals'][0][0][0]
+        pre_task_temp = data_dict['hpc_gg_session']['task'][0][0]['pre_task_intervals'][0][0][0]
+        post_task_temp = data_dict['hpc_gg_session']['task'][0][0]['post_task_intervals'][0][0][0]
 
-            nap_pos = nap.Tsd(pos_t, d=pos[:, 0], time_units="s")
-            nap_spd = nap.Tsd(pos_t, d=linspd, time_units="s")
-            nap_air_puff = nap.Ts(air_puff_times, time_units="ms")
-            run_intervals = nap.IntervalSet(start=run_temp[0], end=run_temp[1])
-            pre_sws_intervals = nap.IntervalSet(start=pre_sws_temp[0], end=pre_sws_temp[1])
-            post_sws_intervals = nap.IntervalSet(start=post_sws_temp[0], end=post_sws_temp[1])
+        nap_pos = nap.Tsd(pos_t[:, 0], d=pos[:, 0], time_units="s")
+        nap_spd = nap.Tsd(pos_t[:, 0], d=linspd[:, 0], time_units="s")
+        nap_air_puff = nap.Ts(air_puff_times[:, 0], time_units="ms")
+        run_intervals = nap.IntervalSet(start=run_temp[0], end=run_temp[1])
+        pre_task_intervals = nap.IntervalSet(start=pre_task_temp[0], end=pre_task_temp[1])
+        post_task_intervals = nap.IntervalSet(start=post_task_temp[0], end=post_task_temp[1])
 
-            # preparing spikes
-            cells_hpc = np.argwhere([np.char.equal(region, 'hpc')])
-            if cells_hpc.size > 0:
-                spks_times = {}
-                for c, a in enumerate(cells_hpc[:, 1]):
-                    spks_times[c] = spikes[a]
+        # preparing spikes
+        cells_hpc = np.argwhere([np.char.equal(region, 'hpc')])
+        if len(cells_hpc[:, 1]) > 0:
+            spks_times = {}
+            for c, a in enumerate(cells_hpc[:, 1]):
+                spks_times[c] = spikes[0][a][:,0]
 
-                # passing to pynapple ts group
-                spikes_times = nap.TsGroup(spks_times)
+            # passing to pynapple ts group
+            spikes_times = nap.TsGroup(spks_times)
 
-                # separating in pre/run
-                temp_r = spikes_times.restrict(run_intervals)  # run
-                temp_presws = spikes_times.restrict(pre_sws_intervals)  # pre run SWS
-                temp_postsws = spikes_times.restrict(post_sws_intervals)  # post run SWS
+            # separating in pre/run
+            temp_r = spikes_times.restrict(run_intervals)  # run
+            temp_pre_task = spikes_times.restrict(pre_task_intervals)  # pre run home cage
+            temp_post_task = spikes_times.restrict(post_task_intervals)  # post run home cage
 
-                # picking cells based on firing rate
-                cells2keep = (temp_r.rates.values > min_fr)
-                if sum(cells2keep) > min_n_cell:
+            # picking cells based on firing rate
+            cells2keep = (temp_r.rates.values > min_fr)
+            if sum(cells2keep) > min_n_cell:
 
-                    # normalizing and smoothing data - run periods
-                    temp_data = zscore(temp_r.count(bin_size).as_dataframe().rolling(window=wind_cov,
-                                win_type='gaussian', center=True, min_periods=1).mean(std=std_conv).values)
-                    run_time = np.array(temp_r.count(bin_size).index)
-                    run_data = temp_data[:, cells2keep].copy()
+                # normalizing and smoothing data - run periods
+                temp_data = zscore(temp_r.count(bin_size).as_dataframe().rolling(window=wind_cov,
+                                                                                 win_type='gaussian', center=True,
+                                                                                 min_periods=1).mean(
+                    std=std_conv).values)
+                run_time = np.array(temp_r.count(bin_size).index)
+                run_data = temp_data[:, cells2keep].copy()
 
-                    # normalizing and smoothing data - sleep periods
-                    temp_data = zscore(temp_presws.count(bin_size).as_dataframe().rolling(window=wind_cov,
-                                win_type='gaussian', center=True, min_periods=1).mean(std=std_conv).values)
-                    presws_time = np.array(temp_presws.count(bin_size).index)
-                    presws_data = temp_data[:, cells2keep].copy()
+                # normalizing and smoothing data - pre task periods
+                temp_data = zscore(temp_pre_task.count(bin_size).as_dataframe().rolling(window=wind_cov,
+                                                                                        win_type='gaussian', center=True,
+                                                                                        min_periods=1).mean(
+                    std=std_conv).values)
+                pre_task_time = np.array(temp_pre_task.count(bin_size).index)
+                pre_task_data = temp_data[:, cells2keep].copy()
 
-                    # normalizing and smoothing data - sleep periods
-                    temp_data = zscore(temp_postsws.count(bin_size).as_dataframe().rolling(window=wind_cov,
-                                win_type='gaussian', center=True, min_periods=1).mean(std=std_conv).values)
-                    postsws_time = np.array(temp_postsws.count(bin_size).index)
-                    postsws_data = temp_data[:, cells2keep].copy()
+                # normalizing and smoothing data - post task periods
+                temp_data = zscore(temp_post_task.count(bin_size).as_dataframe().rolling(window=wind_cov,
+                                                                                         win_type='gaussian', center=True,
+                                                                                         min_periods=1).mean(
+                    std=std_conv).values)
+                post_task_time = np.array(temp_post_task.count(bin_size).index)
+                post_task_data = temp_data[:, cells2keep].copy()
 
+                run_pos = nap_pos.restrict(run_intervals).as_series()
+                run_spd = nap_spd.restrict(run_intervals).as_series()
 
-                    run_pos = nap_pos.restrict(run_intervals).as_series()
-                    run_spd = nap_spd.restrict(run_intervals).as_series()
+                # extracting left and right runs trials
+                temp = nap.Tsd(np.array(run_pos.index), savgol_filter(np.array(run_pos.values), 300, 3))
+                left_runs_int2, right_runs_int2 = extract_trials(temp, nap_spd)
 
-                    # extracting left and right runs trials
-                    temp = nap.Tsd(np.array(run_pos.index), savgol_filter(np.array(run_pos.values), 300, 3))
-                    left_runs_int2, right_runs_int2 = extract_trials(temp, nap_spd)
+                # merging close intervals if necessary
+                left_runs_int = left_runs_int2.merge_close_intervals(threshold=1)
+                right_runs_int = right_runs_int2.merge_close_intervals(threshold=1)
 
-                    # merging close intervals if necessary
-                    left_runs_int = left_runs_int2.merge_close_intervals(threshold=1)
-                    right_runs_int = right_runs_int2.merge_close_intervals(threshold=1)
+                # identifying which run is safe or dangerous
+                n_r = len(nap_air_puff.restrict(right_runs_int))
+                n_l = len(nap_air_puff.restrict(left_runs_int))
+                if n_l > n_r:
+                    runs_type = {'left': 'danger', 'right': 'safe'}
+                else:
+                    runs_type = {'left': 'safe', 'right': 'danger'}
 
-                    # identifying which run is safe or dangerous
-                    n_r = len(nap_air_puff.restrict(right_runs_int))
-                    n_l = len(nap_air_puff.restrict(left_runs_int))
-                    if n_l > n_r:
-                        runs_type = {'left': 'danger', 'right': 'safe'}
-                    else:
-                        runs_type = {'left': 'safe', 'right': 'danger'}
+                # normalizing data for contrastive methods
+                N1 = zscore(post_task_data)
+                N1 = N1 / np.linalg.norm(N1, axis=0)
+                N2 = zscore(pre_task_data)
+                N2 = N2 / np.linalg.norm(N2, axis=0)
 
+                # normalizing run data
+                norm_run_data = zscore(run_data)
 
-                    # normalizing data for contrastive methods
-                    N1 = zscore(postsws_data)
-                    N1 = N1 / np.linalg.norm(N1, axis=0)
-                    N2 = zscore(presws_data)
-                    N2 = N2 / np.linalg.norm(N2, axis=0)
+                # gcPCA fitting
+                gcpca_mdl = gcPCA(method='v4')
+                gcpca_mdl.fit(N1, N2)
 
-                    # normalizing run data
-                    norm_run_data = zscore(run_data)
+                # gcPCA projection run data
+                run_gcpca = nap.TsdFrame(run_time, d=norm_run_data.dot(gcpca_mdl.loadings_[:, :2]))
+                run_gcpca_last = nap.TsdFrame(run_time, d=norm_run_data.dot(gcpca_mdl.loadings_[:, -2:]))
 
-                    # gcPCA fitting
-                    gcpca_mdl = gcPCA(method='v4')
-                    gcpca_mdl.fit(N1, N2)
+                # cPCA gitting
+                # cPCA all components
+                cPCA_mdl = CPCA(n_components=post_task_data.shape[1])
+                cPCA_mdl.fit(N1, N2)
+                # cPCA 2 components
+                cPCA_mdl2 = CPCA(n_components=2)
+                cPCA_mdl2.fit(N1, N2)
+                np.random.seed(0)  # for reproducibility
 
-                    # gcPCA projection run data
-                    run_gcpca = nap.TsdFrame(run_time, d=norm_run_data.dot(gcpca_mdl.loadings_[:, :2]))
-                    run_gcpca_last = nap.TsdFrame(run_time, d=norm_run_data.dot(gcpca_mdl.loadings_[:, -2:]))
+                # automated alpha finding for the different cPCA models
+                _, best_alphas_allPCs = cPCA_mdl.automated_cpca(N1, n_alphas=40, max_log_alpha=4,
+                                                                n_alphas_to_return=3)
+                _, best_alphas_2PCs = cPCA_mdl2.automated_cpca(N1, n_alphas=40, max_log_alpha=4,
+                                                               n_alphas_to_return=3)
+                # cPCA projection run data
+                projected_data_allPCs = []
+                for bbb in best_alphas_allPCs[1:]:
+                    projected_data_allPCs.append(
+                        cPCA_mdl.transform(norm_run_data, alpha_selection='manual', alpha_value=bbb))
 
-                    # cPCA gitting
-                    # cPCA all components
-                    cPCA_mdl = CPCA(n_components=postsws_data.shape[1])
-                    cPCA_mdl.fit(N1, N2)
-                    # cPCA 2 components
-                    cPCA_mdl2 = CPCA(n_components=2)
-                    cPCA_mdl2.fit(N1, N2)
-                    np.random.seed(0)  # for reproducibility
+                projected_data_2PCs = []
+                for bbb in best_alphas_2PCs[1:]:
+                    projected_data_2PCs.append(
+                        cPCA_mdl2.transform(norm_run_data, alpha_selection='manual', alpha_value=bbb))
 
-                    # automated alpha finding for the different cPCA models
-                    _, best_alphas_allPCs = cPCA_mdl.automated_cpca(N1, n_alphas=40, max_log_alpha=4,
-                                                                    n_alphas_to_return=3)
-                    _, best_alphas_2PCs = cPCA_mdl2.automated_cpca(N1, n_alphas=40, max_log_alpha=4,
-                                                                   n_alphas_to_return=3)
-                    # cPCA projection run data
-                    projected_data_allPCs = []
-                    for bbb in best_alphas_allPCs[1:]:
-                        projected_data_allPCs.append(
-                            cPCA_mdl.transform(norm_run_data, alpha_selection='manual', alpha_value=bbb))
+                # passing to TsdFrame
+                run_CPCA_allpcs = []
+                for bbb in range(len(projected_data_allPCs)):
+                    run_CPCA_allpcs.append(nap.TsdFrame(run_time, d=projected_data_allPCs[bbb]))
 
-                    projected_data_2PCs = []
-                    for bbb in best_alphas_2PCs[1:]:
-                        projected_data_2PCs.append(
-                            cPCA_mdl2.transform(norm_run_data, alpha_selection='manual', alpha_value=bbb))
+                run_CPCA_2pcs = []
+                for bbb in range(len(projected_data_2PCs)):
+                    run_CPCA_2pcs.append(nap.TsdFrame(run_time, d=projected_data_2PCs[bbb]))
 
-                    # passing to TsdFrame
-                    run_CPCA_allpcs = []
-                    for bbb in range(len(projected_data_allPCs)):
-                        run_CPCA_allpcs.append(nap.TsdFrame(run_time, d=projected_data_allPCs[bbb]))
+                # setting plot color according to whether run is safe or dange
+                if runs_type['left'] == 'safe':
+                    color_l = 'k'
+                    color_r = 'k'
+                    color_ap_edge_r = ['firebrick', 'k']
+                    color_ap_edge_l = ['white', 'orchid']
+                    color_r_dots = ['whitesmoke', 'dimgray']
+                    color_l_dots = ['whitesmoke', 'dimgray']
 
-                    run_CPCA_2pcs = []
-                    for bbb in range(len(projected_data_2PCs)):
-                        run_CPCA_2pcs.append(nap.TsdFrame(run_time, d=projected_data_2PCs[bbb]))
+                else:
+                    color_l = 'k'
+                    color_r = 'k'
+                    color_ap_edge_l = ['firebrick', 'k']
+                    color_ap_edge_r = ['white', 'orchid']
+                    color_l_dots = ['whitesmoke', 'dimgray']
+                    color_r_dots = ['whitesmoke', 'dimgray']
 
-                    run_pca = nap.TsdFrame(run_time, d=run_data.dot(V[:2, :].T))
+                # find the airpuff in the position
+                temp_ap = nap.IntervalSet(start=nap_air_puff.index - 0.05, end=nap_air_puff.index + 0.05)
+                air_puff_loc = nap_pos.restrict(temp_ap).as_series().median()
 
-                    #setting plot color according to whether run is safe or dange
-                    if runs_type['left'] == 'safe':
-                        color_l = 'k'
-                        color_r = 'k'
-                        color_ap_edge_r = ['firebrick', 'k']
-                        color_ap_edge_l = ['white', 'orchid']
-                        color_r_dots = ['whitesmoke', 'dimgray']
-                        color_l_dots = ['whitesmoke', 'dimgray']
+                # interpolating the run gcPCA data to match the position
+                # first dimensions
+                dim1 = np.interp(run_pos.index, run_gcpca.index, run_gcpca.values[:, 0])
+                dim2 = np.interp(run_pos.index, run_gcpca.index, run_gcpca.values[:, 1])
+                newd = np.concatenate((dim1[:, np.newaxis], dim2[:, np.newaxis]), axis=1)
+                new_r_gcpca = nap.TsdFrame(np.array(run_pos.index), d=newd)
 
-                    else:
-                        color_l = 'k'
-                        color_r = 'k'
-                        color_ap_edge_l = ['firebrick', 'k']
-                        color_ap_edge_r = ['white', 'orchid']
-                        color_l_dots = ['whitesmoke', 'dimgray']
-                        color_r_dots = ['whitesmoke', 'dimgray']
+                # last dimensions
+                dim1 = np.interp(run_pos.index, run_gcpca_last.index,
+                                 run_gcpca_last.values[:, 1])  # this is because the -2: indexing
+                dim2 = np.interp(run_pos.index, run_gcpca_last.index, run_gcpca_last.values[:, 0])
+                newd = np.concatenate((dim1[:, np.newaxis], dim2[:, np.newaxis]), axis=1)
+                new_run_gcpca_last = nap.TsdFrame(np.array(run_pos.index), d=newd)
 
-                    # find the airpuff in the position
-                    temp_ap = nap.IntervalSet(start=nap_air_puff.index - 0.05, end=nap_air_puff.index + 0.05)
-                    air_puff_loc = nap_pos.restrict(temp_ap).as_series().median()
-
-                    # interpolating the run gcPCA data to match the position
-                    # first dimensions
-                    dim1 = np.interp(run_pos.index, run_gcpca.index, run_gcpca.values[:, 0])
-                    dim2 = np.interp(run_pos.index, run_gcpca.index, run_gcpca.values[:, 1])
+                # interpolating the CPCA multiple alpha to match the position
+                new_run_CPCA_allPCs_first = []
+                new_run_CPCA_2PCs_first = []
+                new_run_CPCA_allPCs_last = []
+                for bbb in range(len(run_CPCA_allpcs)):
+                    dim1 = np.interp(run_pos.index, run_CPCA_allpcs[bbb].index, run_CPCA_allpcs[bbb].values[:, 0])
+                    dim2 = np.interp(run_pos.index, run_CPCA_allpcs[bbb].index, run_CPCA_allpcs[bbb].values[:, 1])
                     newd = np.concatenate((dim1[:, np.newaxis], dim2[:, np.newaxis]), axis=1)
-                    new_r_gcpca = nap.TsdFrame(np.array(run_pos.index), d=newd)
+                    new_run_CPCA_allPCs_first.append(nap.TsdFrame(np.array(run_pos.index), d=newd))
 
-                    # last dimensions
-                    dim1 = np.interp(run_pos.index, run_gcpca_last.index,
-                                     run_gcpca_last.values[:, 1])  # this is because the -2: indexing
-                    dim2 = np.interp(run_pos.index, run_gcpca_last.index, run_gcpca_last.values[:, 0])
+                    dim_m1 = np.interp(run_pos.index, run_CPCA_allpcs[bbb].index, run_CPCA_allpcs[bbb].values[:, -1])
+                    dim_m2 = np.interp(run_pos.index, run_CPCA_allpcs[bbb].index, run_CPCA_allpcs[bbb].values[:, -2])
+                    newd = np.concatenate((dim_m1[:, np.newaxis], dim_m2[:, np.newaxis]), axis=1)
+                    new_run_CPCA_allPCs_last.append(nap.TsdFrame(np.array(run_pos.index), d=newd))
+
+                    dim1 = np.interp(run_pos.index, run_CPCA_2pcs[bbb].index, run_CPCA_2pcs[bbb].values[:, 0])
+                    dim2 = np.interp(run_pos.index, run_CPCA_2pcs[bbb].index, run_CPCA_2pcs[bbb].values[:, 1])
                     newd = np.concatenate((dim1[:, np.newaxis], dim2[:, np.newaxis]), axis=1)
-                    new_run_gcpca_last = nap.TsdFrame(np.array(run_pos.index), d=newd)
+                    new_run_CPCA_2PCs_first.append(nap.TsdFrame(np.array(run_pos.index), d=newd))
 
-                    # interpolating the CPCA multiple alpha to match the position
-                    new_run_CPCA_allPCs_first = []
-                    new_run_CPCA_2PCs_first = []
-                    new_run_CPCA_allPCs_last = []
-                    for bbb in range(len(run_CPCA_allpcs)):
-                        dim1 = np.interp(run_pos.index, run_CPCA_allpcs[bbb].index, run_CPCA_allpcs[bbb].values[:, 0])
-                        dim2 = np.interp(run_pos.index, run_CPCA_allpcs[bbb].index, run_CPCA_allpcs[bbb].values[:, 1])
-                        newd = np.concatenate((dim1[:, np.newaxis], dim2[:, np.newaxis]), axis=1)
-                        new_run_CPCA_allPCs_first.append(nap.TsdFrame(np.array(run_pos.index), d=newd))
+                # setting parameters rc to allow better pdf fonttype handling
+                plt.rcParams['pdf.fonttype'] = 42
+                plt.rcParams['ps.fonttype'] = 42
 
-                        dim_m1 = np.interp(run_pos.index, run_CPCA_allpcs[bbb].index, run_CPCA_allpcs[bbb].values[:, -1])
-                        dim_m2 = np.interp(run_pos.index, run_CPCA_allpcs[bbb].index, run_CPCA_allpcs[bbb].values[:, -2])
-                        newd = np.concatenate((dim_m1[:, np.newaxis], dim_m2[:, np.newaxis]), axis=1)
-                        new_run_CPCA_allPCs_last.append(nap.TsdFrame(np.array(run_pos.index), d=newd))
+                ###
+                # plot gcPCA first dimensions
+                cmap_str_danger = 'seismic'
+                cmap_str_safe = custom_gradient
+                fig, (axs) = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(5, 5))
+                for a in left_runs_int.values[1:20, :]:  # plotting only the first 20 trials for better visualization
+                    temp_is = nap.IntervalSet(a[0], end=a[1])
+                    tempdf = new_r_gcpca.restrict(temp_is).as_dataframe().rolling(roll_wind, center=True).mean()
+                    x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0]
+                    y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
+                    axs[0, 0] = plot_pc_trajectories(axs[0, 0], x, y, color_ap_edge_l, color_l_dots, 0.5, nap_pos,
+                                                     temp_is, air_puff_loc, cmap_str_danger)
+                    axs[0, 0] = plot_pc_adjustments(axs[0, 0], 'gcPC$_{1}$', 'gcPC$_{2}$')
 
-                        dim1 = np.interp(run_pos.index, run_CPCA_2pcs[bbb].index, run_CPCA_2pcs[bbb].values[:, 0])
-                        dim2 = np.interp(run_pos.index, run_CPCA_2pcs[bbb].index, run_CPCA_2pcs[bbb].values[:, 1])
-                        newd = np.concatenate((dim1[:, np.newaxis], dim2[:, np.newaxis]), axis=1)
-                        new_run_CPCA_2PCs_first.append(nap.TsdFrame(np.array(run_pos.index), d=newd))
+                for a in right_runs_int.values[1:20, :]:
+                    temp_is = nap.IntervalSet(a[0], end=a[1])
+                    tempdf = new_r_gcpca.restrict(temp_is).as_dataframe().rolling(roll_wind, center=True).mean()
+                    x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0]
+                    y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
+                    axs[1, 0] = plot_pc_trajectories(axs[1, 0], x, y, color_ap_edge_r, color_r_dots, 0.5, nap_pos,
+                                                     temp_is, air_puff_loc, cmap_str_safe)
+                    axs[1, 0] = plot_pc_adjustments(axs[1, 0], 'gcPC$_{1}$', 'gcPC$_{2}$')
 
-                    # setting parameters rc to allow better pdf fonttype handling
-                    plt.rcParams['pdf.fonttype'] = 42
-                    plt.rcParams['ps.fonttype'] = 42
+                ###
+                # plot gcPCA last dimensions
+                for a in left_runs_int.values[1:20, :]:
+                    temp_is = nap.IntervalSet(a[0], end=a[1])
+                    tempdf = new_run_gcpca_last.restrict(temp_is).as_dataframe().rolling(roll_wind,
+                                                                                         center=True).mean()
+                    x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0]
+                    y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
+                    axs[0, 1] = plot_pc_trajectories(axs[0, 1], x, y, color_ap_edge_l, color_l_dots, 0.5, nap_pos,
+                                                     temp_is, air_puff_loc, cmap_str_danger)
+                    axs[0, 1] = plot_pc_adjustments(axs[0, 1], 'gcPC$_{last}$', 'gcPC$_{last-1}$')
 
-                    ###
-                    # plot gcPCA first dimensions
-                    cmap_str_danger = 'seismic'
-                    cmap_str_safe = custom_gradient
-                    fig, (axs) = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(5, 5))
-                    for a in left_runs_int.values[1:20, :]:  # plotting only the first 20 trials for better visualization
-                        temp_is = nap.IntervalSet(a[0], end=a[1])
-                        tempdf = new_r_gcpca.restrict(temp_is).as_dataframe().rolling(roll_wind, center=True).mean()
-                        x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0]
-                        y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
-                        axs[0, 0] = plot_pc_trajectories(axs[0, 0], x, y, color_ap_edge_l, color_l_dots, 0.5, nap_pos, temp_is, air_puff_loc, cmap_str_danger)
-                        axs[0, 0] = plot_pc_adjustments(axs[0, 0], 'gcPC$_{1}$','gcPC$_{2}$')
+                for a in right_runs_int.values[1:20, :]:
+                    temp_is = nap.IntervalSet(a[0], end=a[1])
+                    tempdf = new_run_gcpca_last.restrict(temp_is).as_dataframe().rolling(roll_wind,
+                                                                                         center=True).mean()
+                    x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0]
+                    y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
+                    axs[1, 1] = plot_pc_trajectories(axs[1, 1], x, y, color_ap_edge_r, color_r_dots, 0.5, nap_pos,
+                                                     temp_is, air_puff_loc, cmap_str_safe)
+                    axs[1, 1] = plot_pc_adjustments(axs[1, 1], 'gcPC$_{last}$', 'gcPC$_{last-1}$')
+                fig.subplots_adjust(left=0.1, top=0.90, right=0.95, bottom=0.1, hspace=0.3, wspace=0.3)
+                fig.savefig(save_fig_dir + "gcPCA_space_PRE_POST_v2.pdf", transparent=True)
 
-                    for a in right_runs_int.values[1:20, :]:
-                        temp_is = nap.IntervalSet(a[0], end=a[1])
-                        tempdf = new_r_gcpca.restrict(temp_is).as_dataframe().rolling(roll_wind, center=True).mean()
-                        x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0]
-                        y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
-                        axs[1, 0] = plot_pc_trajectories(axs[1, 0], x, y, color_ap_edge_r ,color_r_dots, 0.5, nap_pos, temp_is, air_puff_loc, cmap_str_safe)
-                        axs[1, 0] = plot_pc_adjustments(axs[1, 0], 'gcPC$_{1}$', 'gcPC$_{2}$')
-
-                    ###
-                    # plot gcPCA last dimensions
+                #####################################################
+                # making a plot specifically for different alphas CPCA
+                cpc_str_xlabel = ['cPC$_1$', 'cPC$_{last}$']
+                cpc_str_ylabel = ['cPC$_2$', 'cPC$_{last-1}$']
+                plt.rcParams['font.size'] = 16
+                for bbb in range(len(new_run_CPCA_allPCs_first)):
+                    fig, (axs) = plt.subplots(2, 2, figsize=(5, 5), sharex=True, sharey=True)
                     for a in left_runs_int.values[1:20, :]:
                         temp_is = nap.IntervalSet(a[0], end=a[1])
-                        tempdf = new_run_gcpca_last.restrict(temp_is).as_dataframe().rolling(roll_wind,
-                                                                                             center=True).mean()
-                        x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0]
+                        tempdf = new_run_CPCA_allPCs_first[bbb].restrict(temp_is).as_dataframe().rolling(roll_wind,
+                                                                                                         center=True).mean()
+                        x = tempdf.values[
+                                np.logical_not(np.isnan(tempdf.values[:, 0])), 0] * -1  # for flipping the sign
                         y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
-                        axs[0, 1] = plot_pc_trajectories(axs[0, 1], x, y,color_ap_edge_l, color_l_dots, 0.5, nap_pos, temp_is,air_puff_loc, cmap_str_danger)
-                        axs[0, 1] = plot_pc_adjustments(axs[0, 1], 'gcPC$_{last}$', 'gcPC$_{last-1}$')
+                        axs[0, 0] = plot_pc_trajectories(axs[0, 0], x, y, color_ap_edge_l, color_l_dots, 0.5, nap_pos,
+                                                         temp_is, air_puff_loc, cmap_str_danger)
+                        axs[0, 0] = plot_pc_adjustments(axs[0, 0], cpc_str_xlabel[0], cpc_str_ylabel[0])
 
                     for a in right_runs_int.values[1:20, :]:
                         temp_is = nap.IntervalSet(a[0], end=a[1])
-                        tempdf = new_run_gcpca_last.restrict(temp_is).as_dataframe().rolling(roll_wind,
-                                                                                             center=True).mean()
-                        x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0]
+                        tempdf = new_run_CPCA_allPCs_first[bbb].restrict(temp_is).as_dataframe().rolling(roll_wind,
+                                                                                                         center=True).mean()
+                        x = tempdf.values[
+                                np.logical_not(np.isnan(tempdf.values[:, 0])), 0] * -1  # for flipping the sign
                         y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
-                        axs[1, 1] = plot_pc_trajectories(axs[1, 1], x, y, color_ap_edge_r, color_r_dots, 0.5, nap_pos, temp_is, air_puff_loc, cmap_str_safe)
-                        axs[1, 1] = plot_pc_adjustments(axs[1, 1], 'gcPC$_{last}$', 'gcPC$_{last-1}$')
-                    fig.subplots_adjust(left=0.1, top=0.90, right=0.95, bottom=0.1, hspace=0.3, wspace=0.3)
-                    fig.savefig(save_fig_dir + ses.astype(str) + "gcPCA_space_PRE_POST_v2.pdf", transparent=True)
-
-                    #####################################################
-                    # making a plot specifically for different alphas CPCA
-                    cpc_str_xlabel = ['cPC$_1$', 'cPC$_{last}$']
-                    cpc_str_ylabel = ['cPC$_2$', 'cPC$_{last-1}$']
-                    plt.rcParams['font.size'] = 16
-                    for bbb in range(len(new_run_CPCA_allPCs_first)):
-                        fig, (axs) = plt.subplots(2, 2, figsize=(5, 5), sharex=True, sharey=True)
-                        for a in left_runs_int.values[1:20, :]:
-                            temp_is = nap.IntervalSet(a[0], end=a[1])
-                            tempdf = new_run_CPCA_allPCs_first[bbb].restrict(temp_is).as_dataframe().rolling(roll_wind,
-                                                                                                center=True).mean()
-                            x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0] * -1  # for flipping the sign
-                            y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
-                            axs[0, 0] = plot_pc_trajectories(axs[0, 0], x, y, color_ap_edge_l, color_l_dots, 0.5, nap_pos, temp_is, air_puff_loc, cmap_str_danger)
-                            axs[0, 0] = plot_pc_adjustments(axs[0, 0], cpc_str_xlabel[0],  cpc_str_ylabel[0])
-
-                        for a in right_runs_int.values[1:20, :]:
-                            temp_is = nap.IntervalSet(a[0], end=a[1])
-                            tempdf = new_run_CPCA_allPCs_first[bbb].restrict(temp_is).as_dataframe().rolling(roll_wind,
-                                                                                                center=True).mean()
-                            x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0] * -1  # for flipping the sign
-                            y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
-                            axs[1, 0] = plot_pc_trajectories(axs[1, 0], x, y, color_ap_edge_r, color_r_dots, 0.5, nap_pos,
+                        axs[1, 0] = plot_pc_trajectories(axs[1, 0], x, y, color_ap_edge_r, color_r_dots, 0.5, nap_pos,
                                                          temp_is, air_puff_loc, cmap_str_safe)
-                            axs[1, 0] = plot_pc_adjustments(axs[1, 0], cpc_str_xlabel[0], cpc_str_ylabel[0])
+                        axs[1, 0] = plot_pc_adjustments(axs[1, 0], cpc_str_xlabel[0], cpc_str_ylabel[0])
 
-                        for a in left_runs_int.values[1:20, :]:
-                            temp_is = nap.IntervalSet(a[0], end=a[1])
-                            tempdf = new_run_CPCA_allPCs_last[bbb].restrict(temp_is).as_dataframe().rolling(roll_wind,
-                                                                                                center=True).mean()
-                            x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0] * -1  # for flipping the sign
-                            y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
-                            axs[0, 1] = plot_pc_trajectories(axs[0, 1], x, y, color_ap_edge_l, color_l_dots, 0.5, nap_pos, temp_is, air_puff_loc, cmap_str_danger)
-                            axs[0, 1] = plot_pc_adjustments(axs[0, 1], cpc_str_xlabel[1],  cpc_str_ylabel[1])
+                    for a in left_runs_int.values[1:20, :]:
+                        temp_is = nap.IntervalSet(a[0], end=a[1])
+                        tempdf = new_run_CPCA_allPCs_last[bbb].restrict(temp_is).as_dataframe().rolling(roll_wind,
+                                                                                                        center=True).mean()
+                        x = tempdf.values[
+                                np.logical_not(np.isnan(tempdf.values[:, 0])), 0] * -1  # for flipping the sign
+                        y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
+                        axs[0, 1] = plot_pc_trajectories(axs[0, 1], x, y, color_ap_edge_l, color_l_dots, 0.5, nap_pos,
+                                                         temp_is, air_puff_loc, cmap_str_danger)
+                        axs[0, 1] = plot_pc_adjustments(axs[0, 1], cpc_str_xlabel[1], cpc_str_ylabel[1])
 
-                        for a in right_runs_int.values[1:20, :]:
-                            temp_is = nap.IntervalSet(a[0], end=a[1])
-                            tempdf = new_run_CPCA_allPCs_last[bbb].restrict(temp_is).as_dataframe().rolling(roll_wind,
-                                                                                                center=True).mean()
-                            x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0] * -1  # for flipping the sign
-                            y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
-                            axs[1, 1] = plot_pc_trajectories(axs[1, 1], x, y, color_ap_edge_r, color_r_dots, 0.5, nap_pos,
+                    for a in right_runs_int.values[1:20, :]:
+                        temp_is = nap.IntervalSet(a[0], end=a[1])
+                        tempdf = new_run_CPCA_allPCs_last[bbb].restrict(temp_is).as_dataframe().rolling(roll_wind,
+                                                                                                        center=True).mean()
+                        x = tempdf.values[
+                                np.logical_not(np.isnan(tempdf.values[:, 0])), 0] * -1  # for flipping the sign
+                        y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
+                        axs[1, 1] = plot_pc_trajectories(axs[1, 1], x, y, color_ap_edge_r, color_r_dots, 0.5, nap_pos,
                                                          temp_is, air_puff_loc, cmap_str_safe)
-                            axs[1, 1] = plot_pc_adjustments(axs[1, 1], cpc_str_xlabel[1], cpc_str_ylabel[1])
+                        axs[1, 1] = plot_pc_adjustments(axs[1, 1], cpc_str_xlabel[1], cpc_str_ylabel[1])
 
-                        fig.subplots_adjust(left=0.1, top=0.90, right=0.95, bottom=0.1, hspace=0.2, wspace=0.2)
-                        fig.suptitle('k='+str(postsws_data.shape[1])+', '+ r'$\alpha$ = ' + "{:.2f}".format(best_alphas_allPCs[bbb + 1]), x=0.55, y=0.97,
-                                     fontweight='bold')
-                        fig.savefig(save_fig_dir + ses.astype(str) + "PRE_POST_all_cPCs_RUN_v2_alpha_" + str(
-                            best_alphas_allPCs[bbb + 1]) + ".pdf", transparent=True)
+                    fig.subplots_adjust(left=0.1, top=0.90, right=0.95, bottom=0.1, hspace=0.2, wspace=0.2)
+                    fig.suptitle('k=' + str(post_task_data.shape[1]) + ', ' + r'$\alpha$ = ' + "{:.2f}".format(
+                        best_alphas_allPCs[bbb + 1]), x=0.55, y=0.97,
+                                 fontweight='bold')
+                    fig.savefig(save_fig_dir + "PRE_POST_all_cPCs_RUN_v2_alpha_" + str(
+                        best_alphas_allPCs[bbb + 1]) + ".pdf", transparent=True)
 
-                    ###
-                    # plot of the 2 cPCs model
-                    for bbb in range(len(new_run_CPCA_2PCs_first)):
-                        fig, (axs) = plt.subplots(2, 2, figsize=(5, 5), sharex=True, sharey=True)
-                        for a in left_runs_int.values[1:20, :]:
-                            temp_is = nap.IntervalSet(a[0], end=a[1])
-                            tempdf = new_run_CPCA_2PCs_first[bbb].restrict(temp_is).as_dataframe().rolling(roll_wind,
-                                                                                                center=True).mean()
-                            x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0] * -1  # for flipping the sign
-                            y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
-                            axs[0, 0] = plot_pc_trajectories(axs[0, 0], x, y, color_ap_edge_l, color_l_dots, 0.5, nap_pos, temp_is, air_puff_loc, cmap_str_danger)
-                            axs[0, 0] = plot_pc_adjustments(axs[0, 0], cpc_str_xlabel[0],  cpc_str_ylabel[0])
+                ###
+                # plot of the 2 cPCs model
+                for bbb in range(len(new_run_CPCA_2PCs_first)):
+                    fig, (axs) = plt.subplots(2, 2, figsize=(5, 5), sharex=True, sharey=True)
+                    for a in left_runs_int.values[1:20, :]:
+                        temp_is = nap.IntervalSet(a[0], end=a[1])
+                        tempdf = new_run_CPCA_2PCs_first[bbb].restrict(temp_is).as_dataframe().rolling(roll_wind,
+                                                                                                       center=True).mean()
+                        x = tempdf.values[
+                                np.logical_not(np.isnan(tempdf.values[:, 0])), 0] * -1  # for flipping the sign
+                        y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
+                        axs[0, 0] = plot_pc_trajectories(axs[0, 0], x, y, color_ap_edge_l, color_l_dots, 0.5, nap_pos,
+                                                         temp_is, air_puff_loc, cmap_str_danger)
+                        axs[0, 0] = plot_pc_adjustments(axs[0, 0], cpc_str_xlabel[0], cpc_str_ylabel[0])
 
-                        for a in right_runs_int.values[1:20, :]:
-                            temp_is = nap.IntervalSet(a[0], end=a[1])
-                            tempdf = new_run_CPCA_2PCs_first[bbb].restrict(temp_is).as_dataframe().rolling(roll_wind,
-                                                                                                center=True).mean()
-                            x = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 0])), 0] * -1  # for flipping the sign
-                            y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
-                            axs[1, 0] = plot_pc_trajectories(axs[1, 0], x, y, color_ap_edge_r, color_r_dots, 0.5, nap_pos,
+                    for a in right_runs_int.values[1:20, :]:
+                        temp_is = nap.IntervalSet(a[0], end=a[1])
+                        tempdf = new_run_CPCA_2PCs_first[bbb].restrict(temp_is).as_dataframe().rolling(roll_wind,
+                                                                                                       center=True).mean()
+                        x = tempdf.values[
+                                np.logical_not(np.isnan(tempdf.values[:, 0])), 0] * -1  # for flipping the sign
+                        y = tempdf.values[np.logical_not(np.isnan(tempdf.values[:, 1])), 1]
+                        axs[1, 0] = plot_pc_trajectories(axs[1, 0], x, y, color_ap_edge_r, color_r_dots, 0.5, nap_pos,
                                                          temp_is, air_puff_loc, cmap_str_safe)
-                            axs[1, 0] = plot_pc_adjustments(axs[1, 0], cpc_str_xlabel[0], cpc_str_ylabel[0])
+                        axs[1, 0] = plot_pc_adjustments(axs[1, 0], cpc_str_xlabel[0], cpc_str_ylabel[0])
 
-                        # changing colors of matplotlib spines to white using a for loop
-                        for spine in axs[0, 1].spines.values():
-                            spine.set_edgecolor('white')
-                        for spine in axs[1, 1].spines.values():
-                            spine.set_edgecolor('white')
+                    # changing colors of matplotlib spines to white using a for loop
+                    for spine in axs[0, 1].spines.values():
+                        spine.set_edgecolor('white')
+                    for spine in axs[1, 1].spines.values():
+                        spine.set_edgecolor('white')
 
-                        fig.subplots_adjust(left=0.1, top=0.90, right=0.95, bottom=0.1, hspace=0.2, wspace=0.2)
-                        fig.suptitle('k=2, ' + r'$\alpha$ = ' + "{:.2f}".format(best_alphas_2PCs[bbb + 1]), x=0.29, y=0.97,
-                                     fontweight='bold')
-                        fig.savefig(save_fig_dir + ses.astype(str) + "PRE_POST_2_cPCs_RUN_v2_alpha_" + str(
-                            best_alphas_2PCs[bbb + 1]) + ".pdf", transparent=True)
-                    ###
-                    # make raster plots of each condition and run
-                    plt.rcParams['font.size'] = 16
-                    pre_sws_interval_plot = nap.IntervalSet(start=pre_sws_temp[0], end=pre_sws_temp[0]+50)
-                    post_sws_interval_plot = nap.IntervalSet(start=post_sws_temp[0], end=post_sws_temp[0]+50)
-                    task_interval_plot = nap.IntervalSet(start=run_temp[0], end=run_temp[0]+50)
-                    temp_spks_pre = spikes_times.restrict(pre_sws_interval_plot)
-                    temp_spks_post = spikes_times.restrict(post_sws_interval_plot)
-                    temp_spks_task = spikes_times.restrict(task_interval_plot)
+                    fig.subplots_adjust(left=0.1, top=0.90, right=0.95, bottom=0.1, hspace=0.2, wspace=0.2)
+                    fig.suptitle('k=2, ' + r'$\alpha$ = ' + "{:.2f}".format(best_alphas_2PCs[bbb + 1]), x=0.29, y=0.97,
+                                 fontweight='bold')
+                    fig.savefig(save_fig_dir + "PRE_POST_2_cPCs_RUN_v2_alpha_" + str(
+                        best_alphas_2PCs[bbb + 1]) + ".pdf", transparent=True)
+                ###
+                # make raster plots of each condition and run
+                plt.rcParams['font.size'] = 16
+                pre_task_interval_plot = nap.IntervalSet(start=pre_task_temp[0], end=pre_task_temp[0] + 50)
+                post_task_interval_plot = nap.IntervalSet(start=post_task_temp[0], end=post_task_temp[0] + 50)
+                task_interval_plot = nap.IntervalSet(start=run_temp[0], end=run_temp[0] + 50)
+                temp_spks_pre = spikes_times.restrict(pre_task_interval_plot)
+                temp_spks_post = spikes_times.restrict(post_task_interval_plot)
+                temp_spks_task = spikes_times.restrict(task_interval_plot)
 
+                # pre-task raster plot
+                fig, axs = plt.subplots(1, 1, figsize=(4, 3))
+                for a in range(len(cells_hpc[cells2keep])):
+                    axs.eventplot(temp_spks_pre[a].index, lineoffsets=a, color='k', linewidths=0.5, linelengths=0.5)
+                axs.set_title('Pre-task Recordings')
+                # axs.set_xticks([])
+                axs.set_ylabel('Neurons')
+                plt.tight_layout()
+                plt.savefig(save_fig_dir + "_pre_task_raster.pdf", transparent=True)
 
-                    #pre-task raster plot
-                    fig, axs = plt.subplots(1, 1, figsize=(4, 3))
-                    for a in range(len(cells_hpc[cells2keep])):
-                        axs.eventplot(temp_spks_pre[a].index,lineoffsets=a, color='k', linewidths=0.5, linelengths=0.5)
-                    axs.set_title('Pre-task Recordings')
-                    # axs.set_xticks([])
-                    axs.set_ylabel('Neurons')
-                    plt.tight_layout()
-                    plt.savefig(save_fig_dir + ses.astype(str) + "_pre_task_raster.pdf", transparent=True)
+                # post-task raster plot
+                fig, axs = plt.subplots(1, 1, figsize=(4, 3))
+                for a in range(len(cells_hpc[cells2keep])):
+                    axs.eventplot(temp_spks_post[a].index, lineoffsets=a, color='k', linewidths=0.5, linelengths=0.5)
+                axs.set_title('Post-task Recordings')
+                # axs.set_xticks([])
+                axs.set_ylabel('Neurons')
+                plt.tight_layout()
+                plt.savefig(save_fig_dir + "_post_task_raster.pdf", transparent=True)
 
-                    # post-task raster plot
-                    fig, axs = plt.subplots(1, 1, figsize=(4, 3))
-                    for a in range(len(cells_hpc[cells2keep])):
-                        axs.eventplot(temp_spks_post[a].index, lineoffsets=a, color='k', linewidths=0.5, linelengths=0.5)
-                    axs.set_title('Post-task Recordings')
-                    # axs.set_xticks([])
-                    axs.set_ylabel('Neurons')
-                    plt.tight_layout()
-                    plt.savefig(save_fig_dir + ses.astype(str) + "_post_task_raster.pdf", transparent=True)
-
-                    # task plot
-                    fig, axs = plt.subplots(1, 1, figsize=(4, 3))
-                    for a in range(len(cells_hpc[cells2keep])):
-                        axs.eventplot(temp_spks_task[a].index, lineoffsets=a, color='k', linewidths=0.5, linelengths=0.5)
-                    axs.set_title('Task')
-                    # axs.set_xticks([])
-                    axs.set_ylabel('Neurons')
-                    plt.tight_layout()
-                    plt.savefig(save_fig_dir + ses.astype(str) + "_task_raster.pdf", transparent=True)
+                # task plot
+                fig, axs = plt.subplots(1, 1, figsize=(4, 3))
+                for a in range(len(cells_hpc[cells2keep])):
+                    axs.eventplot(temp_spks_task[a].index, lineoffsets=a, color='k', linewidths=0.5, linelengths=0.5)
+                axs.set_title('Task')
+                # axs.set_xticks([])
+                axs.set_ylabel('Neurons')
+                plt.tight_layout()
+                plt.savefig(save_fig_dir + "_task_raster.pdf", transparent=True)
 plt.show()

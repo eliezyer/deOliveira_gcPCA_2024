@@ -1,0 +1,14 @@
+name: oliveira_gcPCA
+channels:
+  - defaults
+dependencies:
+  - python=3.9.19
+  - pip:
+      - contrastive==1.2.0
+      - matplotlib==3.9.1.post1
+      - numpy==1.26.4
+      - pandas==2.2.2
+      - pynapple==0.6.6
+      - scikit-learn==1.5.1
+      - scipy==1.13.1
+      - seaborn==0.13.2

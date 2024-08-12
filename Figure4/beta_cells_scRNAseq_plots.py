@@ -1,39 +1,34 @@
-""" plot to make the exploratory analysis of gcPCA on beta cells from jens dataset"""
+""" Script to analyze and plot the pancreatic single-cell RNA sequencing dataset"""
 
 # importing essentials
 import os
 import numpy as np
 import pandas as pd
 import sys
-import matplotlib as mpl
 import matplotlib.pyplot as plt
-mpl.use('Qt5Agg')
 
 # change the repo_dir to the folder where you downloaded the gcPCA
-repo_dir = "/home/eliezyer/Documents/github/generalized_contrastive_PCA/" #repository dir in data.einsteinmed
+repo_dir = "/home/eliezyer/Documents/github/generalized_contrastive_PCA/"
 
 sys.path.append(repo_dir)
 from contrastive_methods import gcPCA
 
 # defining ancillary functions
-# change the data path to where you downloaded the data
-data_path = "/mnt/extraSSD4TB/CloudStorage/Dropbox/preprocessing_data/gcPCA_files/Jens_data/scRNA_seq/"
-save_path = data_path
-os.chdir(data_path)
+# change the data dir to where you downloaded the data
+data_dir = '/mnt/extraSSD4TB/CloudStorage/Dropbox/preprocessing_data/gcPCA_files/Jens_data/scRNA_seq/'
+
+# gene dir should point where you downloaded the gene files
+gene_dir = '/home/eliezyer/Documents/github/deOliveira_gcPCA_2024/Figure4/'
 save_fig_dir = '/mnt/extraSSD4TB/CloudStorage/Dropbox/figures_gcPCA/Figure4/source_plots/'
 
-# loadings negative and positive rank of beta cells
-# FIX THIS
-neg_rank = pd.read_csv(os.path.join(data_path, 'NegRank_BetaCells_dataset1.csv'), delimiter=' ', index_col=None, header=None)
-neg_rank.columns = ['gene', 'rank']
-pos_rank = pd.read_csv(os.path.join(data_path, 'PosRank_BetaCells_dataset1.csv'), delimiter=' ', index_col=None, header=None)
-pos_rank.columns = ['gene', 'rank']
+# loading genes used for analysis
+genes_used = pd.read_csv(os.path.join(gene_dir, 'genes_used.txt'), delimiter=' ', index_col=None, header=None)
 
 # loading data in as pandas dataframe
-data = pd.read_table(os.path.join(data_path, 'GSE153855_Expression_RPKM_HQ_allsamples.txt'), sep='\t',
+data = pd.read_table(os.path.join(data_dir, 'GSE153855_Expression_RPKM_HQ_allsamples.txt'), sep='\t',
                      index_col=0, header=None).T
 
-annotation = pd.read_csv(os.path.join(data_path,'GSE153855_Cell_annotation.txt'), sep='\t')
+annotation = pd.read_csv(os.path.join(data_dir, 'GSE153855_Cell_annotation.txt'), sep='\t')
 
 # picking only beta cells of T2D and normal patients
 diabetes_beta_df = data[(annotation.CellType.values == 'Beta') & (annotation.Disease.values == 'type II diabetes')]
@@ -65,12 +60,13 @@ tempN2 = np.log2(normal_beta_df.values+1)
 temp_whole_data = np.concatenate((diabetes_beta_df.values, normal_beta_df.values), axis=0)
 temp_donors = np.concatenate((donors_diabetes, donors_normal+donors_diabetes.max()+1), axis=0)
 
-genes_to_keep_final = np.isin(all_gene_names, neg_rank.gene.values)
+genes_to_keep_final = np.isin(all_gene_names, genes_used.values)
 
 N1_red = tempN1[:, genes_to_keep_final]
 N2_red = tempN2[:, genes_to_keep_final]
 genes_used = all_gene_names[genes_to_keep_final]
-# centering tthe data
+
+# centering the data
 N1 = N1_red - np.mean(N1_red, axis=0)
 N2 = N2_red - np.mean(N2_red, axis=0)
 
@@ -114,7 +110,6 @@ for subject in np.unique(donors_diabetes):
     subject_to_plot = donors_diabetes == subject
     plt.scatter(gcpca_mdl.Ra_scores_[subject_to_plot, 0],
                 gcpca_mdl.Ra_scores_[subject_to_plot, 1], s=marker_size, label=subject, c=cmap_set1(subject))
-# plt.legend(title='Donors', loc=(0.6, -0.2), fontsize=14)
 plt.xlabel('gcPC$_1$')
 plt.ylabel('gcPC$_2$')
 plt.title('T2D Beta Cells')
@@ -129,7 +124,6 @@ for subject in np.unique(donors_diabetes):
     subject_to_plot = donors_diabetes == subject
     plt.scatter(gcpca_mdl.Ra_scores_[subject_to_plot, -1],
                 gcpca_mdl.Ra_scores_[subject_to_plot, -2], s=marker_size, label=subject, c=cmap_set1(subject))
-# plt.legend(title='Donors',loc=(0.85, 0.009))
 plt.xlabel('gcPC$_{last}$')
 plt.ylabel('gcPC$_{last-1}$')
 plt.title('T2D Beta Cells')
@@ -144,7 +138,6 @@ for subject in np.unique(donors_normal):
     subject_to_plot = donors_normal == subject
     plt.scatter(gcpca_mdl.Rb_scores_[subject_to_plot, 0],
                 gcpca_mdl.Rb_scores_[subject_to_plot, 1], s=marker_size, label=subject, c=cmap_set2(subject))
-# plt.legend(title='Donors', loc=(0.7, -0.2), fontsize=14)
 plt.xlabel('gcPC$_1$')
 plt.ylabel('gcPC$_2$')
 plt.title('Control Beta Cells')
@@ -159,7 +152,6 @@ for subject in np.unique(donors_normal):
     subject_to_plot = donors_normal == subject
     plt.scatter(gcpca_mdl.Rb_scores_[subject_to_plot, -1],
                 gcpca_mdl.Rb_scores_[subject_to_plot, -2], s=marker_size, label=subject, c=cmap_set2(subject))
-# plt.legend(title='Donors',loc=(0.85, 0.009))
 plt.xlabel('gcPC$_{last}$')
 plt.ylabel('gcPC$_{last-1}$')
 plt.title('Control Beta Cells')

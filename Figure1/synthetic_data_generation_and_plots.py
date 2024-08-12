@@ -11,12 +11,11 @@ import numpy as np
 from scipy.stats import zscore
 from scipy.linalg import orth
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import matplotlib.transforms as mtransforms
 import os
 
 # change repo_dir to the location where you save the gcPCA package
-repo_dir = "/Users/eliezyerdeoliveira/Documents/github/generalized_contrastive_PCA"
+repo_dir = "/home/eliezyer/Documents/github/generalized_contrastive_PCA/"
 sys.path.append(repo_dir)
 from contrastive_methods import gcPCA
 
@@ -25,7 +24,7 @@ plt.rcParams.update({'figure.dpi': 150, 'font.size': 15,
                     'text.latex.preamble': r'\usepackage{amsfonts}'})
 
 # change it to the location where to save the figures
-save_fig_dir = "/Users/eliezyerdeoliveira/Dropbox/figures_gcPCA/Figure1/source_plots/"  # path to save figures
+save_fig_dir = "/mnt/extraSSD4TB/CloudStorage/Dropbox/figures_gcPCA/Figure1/source_plots/"  # path to save figures
 
 # %% parameters
 N_samples = 100000
@@ -381,7 +380,7 @@ fig.savefig(os.path.join(save_fig_dir, 'latent_features_eigenvalue_model_linear.
 fig.savefig(os.path.join(save_fig_dir, 'latent_features_eigenvalue_model_linear.png'))
 
 # %% plot the second row of figure 1, showing all the methods solutions in a single row
-fig = plt.figure(num=0, figsize=(13, 4))
+fig = plt.figure(num=1, figsize=(13, 4))
 grid1 = plt.GridSpec(1, 3, left=0.05, right=0.99, bottom=0.15, top=0.83,wspace=0.2)
 
 ###
@@ -501,7 +500,7 @@ fig.savefig(os.path.join(save_fig_dir, 'contrastive_methods_functions.pdf'), tra
 fig.savefig(os.path.join(save_fig_dir, 'contrastive_methods_functions.png'), transparent=True)
 
 # %% third row of figure 1: what each contrastive method (cPCA vs gcPCA) reveal in samples
-fig = plt.figure(num=0, figsize=(13, 4))
+fig = plt.figure(num=2, figsize=(13, 4))
 # preparing grid for plot
 grid2 = plt.GridSpec(2, 5, figure=fig, left=0.03, right=0.8, wspace=0.3)
 grid3 = plt.GridSpec(2, 1, figure=fig, left=0.85, right=0.99)
