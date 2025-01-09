@@ -12,6 +12,7 @@ from scipy.stats import zscore
 from scipy.linalg import orth
 import matplotlib.pyplot as plt
 import matplotlib.transforms as mtransforms
+import matplotlib as mpl
 import os
 
 # change repo_dir to the location where you save the gcPCA package
@@ -20,11 +21,12 @@ sys.path.append(repo_dir)
 from contrastive_methods import gcPCA
 
 plt.rcParams.update({'figure.dpi': 150, 'font.size': 15,
+                     'font.family': 'Arial',
                      'pdf.fonttype': 42, 'ps.fonttype': 42,
                     'text.latex.preamble': r'\usepackage{amsfonts}'})
 
 # change it to the location where to save the figures
-save_fig_dir = "/mnt/extraSSD4TB/CloudStorage/Dropbox/figures_gcPCA/Figure1/source_plots/"  # path to save figures
+save_fig_dir = "/mnt/extraSSD4TB/CloudStorage/Dropbox/figure_manuscripts/figures_gcPCA/Figure1/source_plots/"  # path to save figures
 
 # %% parameters
 N_samples = 100000

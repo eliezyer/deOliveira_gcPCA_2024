@@ -14,7 +14,7 @@ import matplotlib as mpl
 import os
 
 # change repo_dir to where you downloaded the gcPCA class
-repo_dir = "/Users/eliezyerdeoliveira/Documents/github/generalized_contrastive_PCA"  # repository dir on laptop
+repo_dir = "/home/eliezyer/Documents/github/generalized_contrastive_PCA/"  # repository dir on laptop
 sys.path.append(repo_dir)
 from contrastive_methods import gcPCA
 
@@ -22,7 +22,7 @@ plt.rcParams.update({'figure.dpi': 150, 'font.size': 15,
                      'pdf.fonttype': 42, 'ps.fonttype': 42})
 
 # change save fig directory to where you want to save te figure
-save_fig_dir = "/Users/eliezyerdeoliveira/Dropbox/figures_gcPCA/toy_data/"  # path to save figures
+save_fig_dir = "/mnt/extraSSD4TB/CloudStorage/Dropbox/figure_manuscripts/figures_gcPCA/toy_data/"  # path to save figures
 
 
 # %% parameters
@@ -209,151 +209,11 @@ temp = data_B @ W.T
 _, R = np.linalg.qr(temp.T.dot(temp))
 bg_eigspec_true = np.sum(R ** 2, axis=1)
 
-# %% plotting the first row of figure 1
-# getting the covariance of the data
-
-grid1 = plt.GridSpec(2, 3, left=0.03, right=0.67, hspace=0.3)
-grid2 = plt.GridSpec(2, 1, left=0.75, right=1, hspace=0.3)
 hsv = mpl.colormaps.get_cmap('hsv')
 spec_cmap = mpl.colormaps.get_cmap('PRGn')
 temp = np.linspace(0, 1, 1000)
 hsv_col = hsv(np.tile(temp, int(N_samples2plot / 1000)))
 spec_col = spec_cmap(np.tile(temp, int(N_samples2plot / 1000)))
-# start plotting
-fig = plt.figure(num=0, figsize=(13, 6.5))
-
-plot1_xlim = (-0.1, 0.1)
-plot1_ylim = (-0.05, 0.05)
-# plot of synthetic data latent features on dataset A
-
-ax = plt.subplot(grid1[0, 0])
-plt.scatter(data_a @ W[0, :].T, data_a @ W[1, :].T,
-            c=hsv_col,
-            s=4)
-plt.xticks([])
-plt.yticks([])
-plt.xlabel('dimension 1')
-plt.ylabel('dimension 2')
-ax.set_xlim(plot1_xlim)
-ax.set_ylim(plot1_ylim)
-ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
-
-# plot of synthetic data latent features on dataset A
-ax = plt.subplot(grid1[0, 1])
-plt.scatter(data_a @ W[dim_A[0], :].T, data_a @ W[dim_A[1], :].T,
-            c=hsv_col,
-            s=4)
-plt.xticks([])
-plt.yticks([])
-plt.title('Low variance\nA manifold', weight='bold', color='green')
-plt.xlabel(f'dimension {dim_A[0]}')
-plt.ylabel(f'dimension {dim_A[1]}')
-
-# change all spines
-for axis in ['top', 'bottom', 'left', 'right']:
-    ax.spines[axis].set_linewidth(4)
-
-for spine in ax.spines.values():
-    spine.set_edgecolor('green')
-ax.set_xlim(plot1_xlim)
-ax.set_ylim(plot1_ylim)
-ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
-
-
-ax = plt.subplot(grid1[0, 2])
-plt.scatter(data_a @ W[dim_B[0], :].T, data_a @ W[dim_B[1], :].T,
-            c=hsv_col,
-            s=4)
-
-plt.xticks([])
-plt.yticks([])
-plt.title('Low variance\nB manifold', weight='bold')
-plt.ylabel(f'dimension {dim_B[1]}')
-plt.xlabel(f'dimension {dim_B[0]}')
-ax.set_xlim(plot1_xlim)
-ax.set_ylim(plot1_ylim)
-ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
-
-ax = plt.subplot(grid1[1, 0])
-plt.scatter(data_b @ W[0, :].T, data_b @ W[1, :].T,
-            c=spec_col,
-            s=4)
-
-plt.xticks([])
-plt.yticks([])
-plt.xlabel('dimension 1')
-plt.ylabel('dimension 2')
-ax.set_xlim(plot1_xlim)
-ax.set_ylim(plot1_ylim)
-ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
-
-ax = plt.subplot(grid1[1, 1])
-plt.scatter(data_b @ W[dim_A[0], :].T, data_b @ W[dim_A[1], :].T,
-            c=spec_col,
-            s=4)
-plt.xticks([])
-plt.yticks([])
-plt.xlabel(f'dimension {dim_A[0]}')
-plt.ylabel(f'dimension {dim_A[1]}')
-plt.xlim(plot1_xlim)
-plt.ylim(plot1_ylim)
-ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
-
-ax = plt.subplot(grid1[1, 2])
-plt.scatter(data_b @ W[dim_B[0], :].T, data_b @ W[dim_B[1], :].T,
-            c=spec_col,
-            s=4)
-plt.xticks([])
-plt.yticks([])
-# changing all spines
-for axis in ['top', 'bottom', 'left', 'right']:
-    ax.spines[axis].set_linewidth(4)
-plt.xlabel(f'dimension {dim_B[0]}')
-plt.ylabel(f'dimension {dim_B[1]}')
-ax.set_xlim(plot1_xlim)
-ax.set_ylim(plot1_ylim)
-ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
-
-ax = plt.subplot(grid2[0, 0])
-ratio_sampling = N_samples/N_samples2plot
-x = np.arange(1, 101, step=1)
-plt.plot(x, fg_eigspec_sampled, color='green', linestyle='-', label='Finite Data',
-         linewidth=4, zorder=2)
-light_green = lighten_color('green',0.85)
-plt.plot(x, fg_eigspec_true/1e4, color=light_green, linestyle='-', label='Infinite Data',
-         linewidth=4, zorder=3)
-
-plt.legend(loc=(0.13, 0.70))
-plt.xticks((dim_A[0]+1, dim_A[1]+1))
-plt.yticks((0.0, 0.5, 1.0))
-plt.ylabel('Eigenvalue')
-plt.grid(color='grey', linestyle='-', linewidth=2, alpha=0.4, zorder=0)
-plt.xlabel('Dimensions')
-ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
-
-ax = plt.subplot(grid2[1, 0])
-x = np.arange(1, 101, step=1)
-plt.plot(x, bg_eigspec_sampled, color='black', linestyle='-', label='Finite Data',
-         linewidth=4, zorder=2)
-light_black = lighten_color('black', 0.3)
-plt.plot(x, bg_eigspec_true/1e4, color=light_black, linestyle='-', label='Infinite Data', linewidth=4,
-         zorder=3) # normalized by the subsampling ratio
-
-plt.legend(loc=(0.13, 0.70))
-plt.xticks((dim_B[0]+1, dim_B[1]+1))
-plt.yticks((0.0, 0.5, 1.0))
-plt.ylabel('Eigenvalue')
-plt.grid(color='black', linestyle='-', linewidth=2,  alpha=0.4, zorder=0)
-plt.xlabel('Dimensions')
-ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
-
-plt.figtext(0.21, 0.69, '+', fontsize=30, fontweight='bold')
-plt.figtext(0.21, 0.25, '+', fontsize=30, fontweight='bold')
-plt.figtext(0.44, 0.69, '+', fontsize=30, fontweight='bold')
-plt.figtext(0.44, 0.25, '+', fontsize=30, fontweight='bold')
-plt.show()
-# fig.savefig(os.path.join(save_fig_path, 'latent_features_eigenvalue_model_linear.pdf'))
-# fig.savefig(os.path.join(save_fig_path, 'latent_features_eigenvalue_model_linear.png'))
 
 # %% plot the second row of figure 1, showing all the methods solutions in a single row
 fig = plt.figure(num=0, figsize=(13, 4))
@@ -447,15 +307,13 @@ fig.savefig(os.path.join(save_fig_dir, 'contrastive_methods_functions_s1.pdf'), 
 fig.savefig(os.path.join(save_fig_dir, 'contrastive_methods_functions_s1.png'), transparent=True)
 
 # %% third row of figure 1: what each contrastive method reveal
-fig = plt.figure(num=0, figsize=(13, 4))
-# grid1 = plt.GridSpec(2, 1, figure=fig, left=0.03, right=0.15)
+fig = plt.figure(num=1, figsize=(13, 4))
 grid2 = plt.GridSpec(2, 5, figure=fig, left=0.03, right=0.8, wspace=0.3)
 grid3 = plt.GridSpec(2, 1, figure=fig, left=0.85, right=0.99)
 
 
 ###
 # cPCA different alphas
-# alpha_list2 = np.linspace(2.1,2.8,5)
 alpha_list2 = [2.2,2.3,2.6,2.8,3.0]
 for c,alp in enumerate(alpha_list2):
     V = extract_cpca_loadings(data_a, data_b, alp)

@@ -18,7 +18,7 @@ import os
 
 import matplotlib.pyplot as plt
 
-plt.rcParams.update({'figure.dpi': 150, 'font.size': 24})
+plt.rcParams.update({'figure.dpi': 150, 'font.size': 24, 'font.family':'Arial'})
 import seaborn as sns
 
 # repository dir
@@ -29,7 +29,7 @@ from contrastive_methods import gcPCA
 from contrastive import CPCA
 
 # change save_fig_path to the directory to save the figures
-save_fig_dir = '/mnt/extraSSD4TB/CloudStorage/Dropbox/figures_gcPCA/Figure2/source_plots/'
+save_fig_dir = '/mnt/extraSSD4TB/CloudStorage/Dropbox/figure_manuscripts/figures_gcPCA/Figure2/source_plots/'
 
 
 ###
